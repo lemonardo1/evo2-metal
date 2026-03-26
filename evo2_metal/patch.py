@@ -6,14 +6,16 @@ without CUDA. Must be imported before any evo2 / vortex modules.
 
 Patches applied
 ---------------
-1. torch.cuda.device        → no-op context manager for cpu/mps devices
+1. torch.cuda.device           → no-op context manager for cpu/mps devices
 2. torch.cuda.memory_allocated → returns 0 for non-CUDA devices
-3. flash_attn_2_cuda / triton  → mocked (not available on Mac)
-4. vortex.FlashSelfAttention.forward  → Metal-backed (removes is_cuda assert)
-5. vortex.FlashCrossAttention.forward → Metal-backed
-6. local_flash_attn_with_kvcache      → PyTorch SDPA fallback for generation
-7. vortex.model.generation.generate   → defaults device='cpu'
-8. evo2.scoring.prepare_batch         → defaults device='cpu'
+3. torch.cuda.empty_cache      → no-op (safe; only called in low_mem_mode)
+4. torch.autocast("cuda")      → silently redirected to cpu autocast
+5. flash_attn_2_cuda / triton  → mocked (not available on Mac)
+6. vortex.FlashSelfAttention.forward  → Metal-backed (removes is_cuda assert)
+7. vortex.FlashCrossAttention.forward → Metal-backed
+8. local_flash_attn_with_kvcache      → PyTorch SDPA fallback for generation
+9. vortex.model.generation.generate   → defaults device='cpu'
+10. evo2.scoring.prepare_batch        → defaults device='cpu'
 """
 
 import math
@@ -33,6 +35,8 @@ def apply_patches():
 
     _patch_cuda_device()
     _patch_cuda_memory()
+    _patch_cuda_misc()
+    _patch_autocast()
     _mock_flash_attn()
     _patch_vortex_attention()
     _patch_vortex_generation()
@@ -78,7 +82,39 @@ def _patch_cuda_memory():
     torch.cuda.memory_allocated = _safe
 
 
-# ── 3. Mock flash_attn_2_cuda / triton / flash_attn ──────────────────────────
+# ── 3. torch.cuda.empty_cache → no-op; other misc cuda stubs ─────────────────
+
+def _patch_cuda_misc():
+    # empty_cache is called in vortex low_mem_mode; silently ignore on CPU
+    torch.cuda.empty_cache = lambda: None
+
+
+# ── 4. torch.autocast("cuda") → redirect to cpu ───────────────────────────────
+
+def _patch_autocast():
+    _original_autocast = torch.autocast
+
+    class _AutocastCompat:
+        """Redirect torch.autocast('cuda') → cpu autocast on non-CUDA systems."""
+        def __init__(self, device_type, *args, **kwargs):
+            if device_type == "cuda" and not torch.cuda.is_available():
+                device_type = "cpu"
+                kwargs.pop("dtype", None)   # cpu autocast defaults are fine
+            self._ctx = _original_autocast(device_type, *args, **kwargs)
+
+        def __enter__(self):
+            return self._ctx.__enter__()
+
+        def __exit__(self, *args):
+            return self._ctx.__exit__(*args)
+
+        def __call__(self, func):
+            return self._ctx(func)
+
+    torch.autocast = _AutocastCompat
+
+
+# ── 5. Mock flash_attn_2_cuda / triton / flash_attn ──────────────────────────
 
 def _mock_flash_attn():
     sys.modules['flash_attn_2_cuda'] = MagicMock()

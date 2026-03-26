@@ -80,6 +80,42 @@ print(output.sequences[0])
 | `evo2_1b_base` | 1B | 8K | ❌ (requires FP8/Transformer Engine) |
 | `evo2_40b` / `evo2_20b` | 40B / 20B | 1M | ❌ (requires multi-GPU) |
 
+## Benchmarks
+
+Measured on **Apple M5 Max (128 GB)**, PyTorch 2.10, macOS 15.
+
+### Evo 2 7B — actual architecture specs (d=128, H=32, causal, Metal GPU)
+
+Evo 2 7B uses StripedHyena 2 (Hyena conv + MHA interleaved). The MHA layers use:
+`d_model=4096`, `num_heads=32`, `d_head=128`, RoPE positional encoding.
+
+| Context length | Time (ms) | TFLOP/s |
+|---|---|---|
+| N=256 | 6.56 ms | 0.164 |
+| N=512 | 9.36 ms | 0.459 |
+| N=1024 | 22.55 ms | 0.762 |
+| N=2048 | 71.92 ms | 0.955 |
+| N=4096 | 265.62 ms | 1.035 |
+| N=8192 | 1007.82 ms | 1.091 |
+
+Accuracy (d=128, H=32, causal): max error < 2e-6 (float32 precision), all PASS.
+
+### FlashAttention v2 kernel: float4 vectorization speedup
+
+| Sequence length | Head dim | v1 (scalar) | v2 (float4) | Speedup |
+|---|---|---|---|---|
+| N=512 | d=64 | 3.91 ms | 1.31 ms | 2.99x |
+| N=1024 | d=64 | 7.28 ms | 2.40 ms | 3.03x |
+| N=2048 | d=64 | 14.44 ms | 4.59 ms | 3.14x |
+| N=1024 | d=128 | 14.27 ms | 4.46 ms | 3.20x |
+
+> **Note:** Only the FlashAttention kernel runs on Metal GPU. All other operations (FFN, embeddings, sampling) run on CPU. Overall generation speed depends on model size and sequence length.
+
+To reproduce:
+```bash
+python -m evo2_metal.flash_attention_metal
+```
+
 ## Patches applied
 
 | Patch | Reason |
@@ -103,3 +139,11 @@ print(output.sequences[0])
 Apache 2.0 — see [LICENSE](LICENSE).
 
 Evo 2 model weights are released under their own license by ARC Institute. See the [Evo 2 repository](https://github.com/arcinstitute/evo2) for details.
+
+
+## Contributor
+
+github.com/lemonardo1
+(Daeseong Kim)
+lemonaatree@gmail.com
+daeseongkim@yuhs.ac
