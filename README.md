@@ -28,8 +28,11 @@ conda activate evo2-mac
 # 2. Install PyTorch (CPU build for Mac)
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-# 3. Install evo2-metal
+# 3. Install evo2-metal (PyPI)
 pip install evo2-metal
+
+# Alternative: install directly from GitHub
+# pip install git+https://github.com/lemonardo1/evo2-metal.git
 ```
 
 ## Usage
