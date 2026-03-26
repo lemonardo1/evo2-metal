@@ -122,6 +122,8 @@ python -m evo2_metal.flash_attention_metal
 |-------|--------|
 | `torch.cuda.device` → no-op for cpu | `StripedHyena.__init__` calls `torch.cuda.device("cpu")` |
 | `torch.cuda.memory_allocated` → returns 0 | Called in generation loop for logging |
+| `torch.cuda.empty_cache` → no-op | Called in `vortex` low-memory mode |
+| `torch.autocast("cuda")` → cpu autocast | `vortex` engine uses CUDA autocast for Hyena filters |
 | `flash_attn_2_cuda` → mocked | Not available on Mac |
 | `FlashSelfAttention.forward` → Metal backend | `assert qkv.is_cuda` fails on CPU |
 | `FlashCrossAttention.forward` → Metal backend | Same |
