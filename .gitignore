@@ -5,3 +5,6 @@ dist/
 build/
 .venv/
 *.DS_Store
+
+.log
+.logs
