@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "evo2-metal"
+version = "0.1.0"
+description = "Run ARC Institute's Evo 2 DNA language model on Apple Silicon (Metal GPU)"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "lemonardo1", email = "lemonaatree@gmail.com" }]
+keywords = ["evo2", "DNA", "language-model", "Apple Silicon", "Metal", "flash-attention", "bioinformatics"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "torch>=2.0",
+    "numpy",
+    "pyobjc-framework-Metal",
+    "evo2>=0.5.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/lemonardo1/evo2-metal"
+Repository = "https://github.com/lemonardo1/evo2-metal"
+Issues = "https://github.com/lemonardo1/evo2-metal/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["evo2_metal*"]
+
+[tool.setuptools.package-data]
+evo2_metal = ["*.metal"]
